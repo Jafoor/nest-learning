@@ -8,20 +8,40 @@ import {
   Delete,
   Patch,
   NotFoundException,
+  Session,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UsersService } from './users.service';
 import { UpdateuserDto } from './dtos/update-user.dto';
 import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { userDto } from './dtos/user.dto';
+import { AuthService } from './auth.service';
 @Controller('auth')
 @Serialize(userDto)
 export class UsersController {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    private authService: AuthService,
+  ) {}
+
+  @Get('/whoami')
+  whoAmI(@Session() session: any) {
+    return this.userService.findOne(session.userId);
+  }
+
   @Post('/signup')
-  createUser(@Body() body: CreateUserDto) {
+  async createUser(@Body() body: CreateUserDto) {
     console.log(body);
-    this.userService.create(body.email, body.password);
+    const user = await this.authService.signUp(body.email, body.password);
+    sessionStorage.userId = user.id;
+    return user;
+  }
+
+  @Post('/signin')
+  async signIn(@Body() body: CreateUserDto, @Session() session: any) {
+    const user = await this.authService.signIn(body.email, body.password);
+    session.userId = user.id;
+    return user;
   }
 
   //   @UseInterceptors(new SerializeInterceptor(userDto))
